@@ -42,7 +42,6 @@ public class Client2 {
                                     break;
                                 }
                                 System.out.println(strFromServer);
-                                System.out.println("\n");
                             }
                         }
                     } catch (Exception e) {
