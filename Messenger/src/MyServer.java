@@ -36,7 +36,7 @@ public class MyServer {
 
     public synchronized boolean isNickBusy (String nick) {
         for (ClientHandler o : clients) {
-            if (o.getname().equals(nick)) {
+            if (o.getName().equals(nick)) {
                 return true;
             }
         }

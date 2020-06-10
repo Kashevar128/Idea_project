@@ -25,7 +25,7 @@ public class ClientHandler {
             new Thread (() -> {
                 try{
                     authentication();
-                    readMessage();
+                    readMessages();
                 }catch (IOException e) {
                     e.printStackTrace();
                 }finally {
@@ -75,6 +75,18 @@ public class ClientHandler {
         try {
             out.writeUTF(msg);
         } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void closeConnection() {
+        myServer.unsubscribe(this);
+        myServer.broadcastMsg(name + " вышел из чата");
+        try {
+            in.close();
+            out.close();
+            socket.close();
+        }catch (IOException e) {
             e.printStackTrace();
         }
     }
