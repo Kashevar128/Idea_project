@@ -4,98 +4,76 @@ import java.io.IOException;
 import java.net.Socket;
 
 public class ClientHandler {
-    private MyServer myServer;
+    private  MyServer myServer;
     private Socket socket;
     private DataInputStream in;
     private DataOutputStream out;
+
     private String name;
 
     public String getName() {
         return name;
     }
 
-    public ClientHandler(MyServer myServer, Socket socket) {
-        this.myServer = myServer;
-        this.socket = socket;
-        this.name = "";
+    public ClientHandler (MyServer myServer, Socket socket) {
         try {
+            this.myServer = myServer;
+            this.socket = socket;
             this.in = new DataInputStream(socket.getInputStream());
             this.out = new DataOutputStream(socket.getOutputStream());
-            new Thread(()-> {
-                try {
-                    authenticate();
-                    readMessages();
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                } finally {
+            this.name = "";
+            new Thread (() -> {
+                try{
+                    authentication();
+                    readMessage();
+                }catch (IOException e) {
+                    e.printStackTrace();
+                }finally {
                     closeConnection();
                 }
             }).start();
-        } catch (IOException ex) {
-            throw new RuntimeException("Client creation error");
+        }catch (IOException e) {
+            throw new RuntimeException("Проблемы при создании обработчика клиента");
         }
     }
 
-    private void closeConnection() {
-        try {
-            in.close();
-            out.close();
-            socket.close();
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-        myServer.unsubscribe(this);
-        myServer.broadcast("User " + name + "left");
-    }
-
-    private void readMessages() throws IOException {
+    public void authentication() throws IOException {
         while (true) {
-            if (in.available()>0) {
-                String message = in.readUTF();
-                System.out.println("From " + name + ":" + message);
-                if (message.equals("/end")) {
-                    return;
-                }
-                if (message.startsWith("/w ")) {
-                    String[] parts = message.split("\\s");
-                    myServer.sendDirect(parts[1],name+ ": "+ parts[2]);
-                } else myServer.broadcast(name + ": " + message);
-            }
-        }
-    }
-
-    private void authenticate() throws IOException {
-        while(true) {
-            if (in.available()>0){
-                String str = in.readUTF();
-                if (str.startsWith("/auth")) {
-                    String[] parts = str.split("\\s");
-                    String nick = myServer.getAuthService().getNickByLoginAndPwd(parts[1], parts[2]);
-                    if (nick != null) {
-                        if (!myServer.isNickLogged(nick)) {
-                            System.out.println(nick + " logged into chat");
-                            name = nick;
-                            sendMsg("/authOk " + nick);
-                            myServer.broadcast(nick + " is in chat");
-                            myServer.subscribe(this);
-                            return;
-                        } else {
-                            System.out.println("User " + nick + " tried to re-enter");
-                            sendMsg("User already logged in");
-                        }
-                    } else {
-                        System.out.println("Wrong login/password");
-                        sendMsg("Incorrect login attempted");
+            String str = in.readUTF();
+            if (str.startsWith("/auth")) {
+                String[] parts = str.split("\\s");
+                String nick = myServer.getAuthService().getNickByLoginPass(parts[1], parts[2]);
+                if (nick != null) {
+                    if(!myServer.isNickBusy(nick)) {
+                        sendMsg ("/authok" + nick);
+                        name = nick;
+                        myServer.broadcastMsg(name + "зашел в чат");
+                        myServer.subscribe(this);
+                        return;
+                    }else {
+                        sendMsg("Учетная запись уже используется");
                     }
+                }else {
+                    sendMsg("Неверные логин/пароль");
                 }
             }
-
         }
     }
 
-    public void sendMsg(String s) {
+    public void readMessages() throws IOException {
+        while (true) {
+            String strFromClient = in.readUTF();
+            System.out.println("от " + name + ": " + strFromClient);
+            if (strFromClient.equals("/end")) {
+                return;
+            }
+            myServer.broadcastMsg(name + ": " + strFromClient);
+        }
+    }
+
+    public void sendMsg (String msg) {
         try {
-            out.writeUTF(s);
+            out.writeUTF(msg);
         } catch (IOException e) {
             e.printStackTrace();
         }

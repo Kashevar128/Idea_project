@@ -5,7 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MyServer {
-    private final int PORT = 8189;
+    private final int PORT = 8200;
+
     private List<ClientHandler> clients;
     private AuthService authService;
 
@@ -13,57 +14,46 @@ public class MyServer {
         return authService;
     }
 
-    public MyServer() {
+    public MyServer () {
         try (ServerSocket server = new ServerSocket(PORT)) {
-            authService = new AuthService();
+            authService = new BaseAuthService();
             authService.start();
             clients = new ArrayList<>();
             while (true) {
-                System.out.println("Server awaits clients");
+                System.out.println("Сервер ожидает подключения");
                 Socket socket = server.accept();
-                System.out.println("Client connected");
+                System.out.println("Клиент подключился");
                 new ClientHandler(this, socket);
             }
-        } catch (IOException ex) {
-            System.out.println("Server error");
-        } finally {
-            if(authService!=null) {
+        }catch (IOException e) {
+            System.out.println("Ошибка в работе сервера");
+        }finally {
+            if (authService != null) {
                 authService.stop();
             }
         }
     }
 
-
-    public synchronized void unsubscribe(ClientHandler clientHandler) {
-        clients.remove(clientHandler);
-    }
-
-    public synchronized void subscribe(ClientHandler clientHandler) {
-        clients.add(clientHandler);
-    }
-
-    public synchronized void broadcast(String s) {
-        for(ClientHandler client: clients) {
-            client.sendMsg(s);
-        }
-    }
-
-    public synchronized boolean isNickLogged(String nick) {
-        for(ClientHandler client: clients) {
-            if (client.getName().equals(nick)) {
+    public synchronized boolean isNickBusy (String nick) {
+        for (ClientHandler o : clients) {
+            if (o.getname().equals(nick)) {
                 return true;
             }
         }
         return false;
     }
 
-    public void sendDirect(String nick, String message) {
-        for (ClientHandler client: clients) {
-            if (client.getName().equals(nick)) {
-                client.sendMsg(message);
-                return;
-            }
+    public synchronized  void broadcastMsg (String msg) {
+        for (ClientHandler o : clients) {
+            o.sendMsg (msg);
         }
-        System.out.println("Unknown nick - message not sent");
+    }
+
+    public synchronized void unsubscribe (ClientHandler o) {
+        clients.remove(o);
+    }
+
+    public synchronized void subscribe (ClientHandler o) {
+        clients.add(o);
     }
 }
